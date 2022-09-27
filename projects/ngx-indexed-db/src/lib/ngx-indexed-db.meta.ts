@@ -37,6 +37,14 @@ export enum DBMode {
   readwrite = 'readwrite',
 }
 
+export enum DBDirection {
+  next,
+  prev,
+  nextunique,
+  prevunique
+}
+
+
 export type Key = string | number | Date | ArrayBufferView | ArrayBuffer | IDBValidKey | IDBKeyRange;
 
 export type WithID = {id: number};
