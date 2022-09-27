@@ -1,7 +1,7 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { openDatabase, CreateObjectStore, DeleteObjectStore } from './ngx-indexed-db';
 import { createTransaction, optionsGenerator, validateBeforeTransaction } from '../utils';
-import { CONFIG_TOKEN, DBConfig, Key, RequestEvent, ObjectStoreMeta, DBMode, WithID } from './ngx-indexed-db.meta';
+import { CONFIG_TOKEN, DBConfig, Key, RequestEvent, ObjectStoreMeta, DBMode, WithID, DBDirection } from './ngx-indexed-db.meta';
 import { isPlatformBrowser } from '@angular/common';
 import { Observable, Subject, combineLatest, from } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -394,14 +394,14 @@ export class NgxIndexedDBService {
    * @param storeName The name of the store to have the entries deleted
    * @param keyRange The key range which the cursor should be open on
    */
-  openCursor(storeName: string, keyRange?: IDBKeyRange): Observable<Event> {
+  openCursor(storeName: string, keyRange?: IDBKeyRange, direction?:DBDirection): Observable<Event> {
     return new Observable((obs) => {
       openDatabase(this.indexedDB, this.dbConfig.name, this.dbConfig.version)
         .then((db) => {
           validateBeforeTransaction(db, storeName, e => obs.error(e));
           const transaction = createTransaction(db, optionsGenerator(DBMode.readonly, storeName, obs.error));
           const objectStore = transaction.objectStore(storeName);
-          const request = keyRange === undefined ? objectStore.openCursor() : objectStore.openCursor(keyRange);
+          const request = keyRange === undefined ? objectStore.openCursor() : objectStore.openCursor(keyRange, direction);
 
           request.onsuccess = (event: Event) => {
             obs.next(event);
@@ -422,7 +422,8 @@ export class NgxIndexedDBService {
     storeName: string,
     indexName: string,
     keyRange: IDBKeyRange,
-    mode: DBMode = DBMode.readonly
+    mode: DBMode = DBMode.readonly,
+    direction?:DBDirection
   ): Observable<Event> {
     const obs = new Subject<Event>();
 
@@ -446,7 +447,7 @@ export class NgxIndexedDBService {
         );
         const objectStore = transaction.objectStore(storeName);
         const index = objectStore.index(indexName);
-        const request = index.openCursor(keyRange);
+        const request = index.openCursor(keyRange, direction);
 
         request.onsuccess = (event: Event) => {
           obs.next(event);
@@ -463,7 +464,7 @@ export class NgxIndexedDBService {
    * @param indexName The index name to filter
    * @param keyRange  The range value and criteria to apply on the index.
    */
-  getAllByIndex<T>(storeName: string, indexName: string, keyRange: IDBKeyRange): Observable<T[]> {
+  getAllByIndex<T>(storeName: string, indexName: string, keyRange: IDBKeyRange, direction?:DBDirection): Observable<T[]> {
     const data: T[] = [];
     return new Observable((obs) => {
       openDatabase(this.indexedDB, this.dbConfig.name, this.dbConfig.version)
@@ -472,7 +473,7 @@ export class NgxIndexedDBService {
           const transaction = createTransaction(db, optionsGenerator(DBMode.readonly, storeName, obs.error));
           const objectStore = transaction.objectStore(storeName);
           const index = objectStore.index(indexName);
-          const request = index.openCursor(keyRange);
+          const request = index.openCursor(keyRange, direction);
           request.onsuccess = (event) => {
             const cursor: IDBCursorWithValue = (event.target as IDBRequest<IDBCursorWithValue>).result;
             if (cursor) {
